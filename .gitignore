@@ -1,3 +1,4 @@
+.DS_Store
 # Prerequisites
 *.d
 
@@ -36,6 +37,9 @@
 *.exe
 *.out
 *.app
+
+# cmake
+build*/
 
 # debug information files
 *.dwo
