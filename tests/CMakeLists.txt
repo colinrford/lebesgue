@@ -1,0 +1,23 @@
+function(leb_add_test name source)
+  add_executable(${name} ${source})
+  target_link_libraries(${name} PRIVATE lam::lebesgue)
+  add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
+leb_add_test(test_lebesgue       test_lebesgue.cpp)
+leb_add_test(test_complex        test_complex.cpp)
+leb_add_test(example_quadrature  example.cpp)
+
+add_executable(lebesgue_benchmark benchmark.cpp)
+target_link_libraries(lebesgue_benchmark PRIVATE lam::lebesgue)
+
+find_package(lam_polynomial_nttp QUIET)
+if(lam_polynomial_nttp_FOUND)
+  message(STATUS "Found lam_polynomial_nttp: building benchmark_nttp")
+  add_executable(benchmark_nttp benchmark_nttp.cpp)
+  target_link_libraries(benchmark_nttp PRIVATE lam::lebesgue lam::polynomial_nttp)
+  target_compile_features(benchmark_nttp PUBLIC cxx_std_23)
+  target_compile_options(benchmark_nttp PRIVATE -fconstexpr-steps=100000000)
+else()
+  message(STATUS "lam_polynomial_nttp not found, skipping benchmark_nttp")
+endif()

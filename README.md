@@ -1,7 +1,6 @@
 # lebesgue
 c++ implementation of V. Malyshkin's lebesgue integral quadrature. Find references below.
 
-
 ## References
 
 - [arXiv:1807.06007](https://arxiv.org/abs/1807.06007) — Lebesgue quadrature theory
