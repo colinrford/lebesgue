@@ -15,7 +15,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
-project(lebesgue_quadrature VERSION 0.1.260113 LANGUAGES CXX)
+project(lebesgue_quadrature VERSION 0.1.260118 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -23,10 +23,14 @@ endif()
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
 
-find_package(lam_linearalgebra REQUIRED)
-find_package(lam_polynomial_nttp REQUIRED)
+if(NOT TARGET lam::linearalgebra)
+  find_package(lam_linearalgebra REQUIRED)
+endif()
+if(NOT TARGET lam::polynomial_nttp)
+  find_package(lam_polynomial_nttp REQUIRED)
+endif()
 
-option(LAM_USE_TBB "Use Intel TBB for parallel execution" ON)
+option(LAM_USE_TBB "Use TBB for parallel execution" ON)
 if(LAM_USE_TBB)
   find_package(TBB QUIET)
   if(TBB_FOUND)
