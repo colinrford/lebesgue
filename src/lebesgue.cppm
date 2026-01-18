@@ -1,4 +1,4 @@
-/* 
+/*
  *  lebesgue.cppm – based on Java implementation of Vladislav Malyshkin
  *  see github.com/colinrford/lebesgue for GPL 3.0 license and for more info
  *
@@ -11,6 +11,7 @@ export import :detail;
 export import :basis;
 export import :gram;
 export import :quadrature;
+export import :tensor;
 
 import std;
 
@@ -22,6 +23,9 @@ using leb::lebesgue_quadrature_data;
 using leb::lebesgue_quadrature_from_moments;
 using leb::lebesgue_quadrature_from_samples;
 using leb::quadrature;
+
+using leb::make_tensor_product;
+using leb::tensor_product_quadrature;
 
 using leb::chebyshev_eval;
 using leb::chebyshev_moments;

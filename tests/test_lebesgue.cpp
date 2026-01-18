@@ -1,4 +1,4 @@
-/* 
+/*
  *  test_lebesgue.cpp
  *  see github.com/colinrford/lebesgue for GPL 3.0 license and for more info
  *
@@ -28,6 +28,38 @@ void check_close(double a, double b, double tol, const char* message)
     std::exit(1);
   }
   std::println("PASS: {} (value: {})", message, a);
+}
+
+// Helper: Explicitly construct Lebesgue Rule for Position Operator X
+// This replaces implicit Gauss calls.
+leb::quadrature<double> make_lebesgue_rule(int n)
+{
+  // 1. Base Moments (Legendre)
+  int n_moments = 2 * n;
+  lam::vector<double> moments(n_moments);
+  for (int k = 0; k < n_moments; ++k)
+  {
+    if (k == 0)
+      moments[k] = 2.0;
+    else if (k % 2 != 0)
+      moments[k] = 0.0;
+    else
+      moments[k] = 2.0 / (1.0 - (double)(k * k));
+  }
+
+  // 2. Explicit Position Operator Moments (nu_k)
+  // x T_k = 0.5 (T_{k+1} + T_{|k-1|})
+  lam::vector<double> x_moments(n_moments);
+  for (int k = 0; k < n_moments; ++k)
+  {
+    double m_plus = (k + 1 < n_moments) ? moments[k + 1] : 0.0;
+    double m_minus = moments[std::abs(k - 1)];
+    x_moments[k] = 0.5 * (m_plus + m_minus);
+  }
+
+  // 3. Solve Spectral Problem for Operator X
+  auto rule_data = leb::lebesgue_quadrature_from_moments<double>(x_moments.as_span(), moments.as_span(), n);
+  return rule_data.to_quadrature();
 }
 
 // ============================================================================
@@ -80,13 +112,13 @@ void test_chebyshev_moments()
   check_close(moments[2], -0.5, 1e-14, "μ_2 = T_2(0.5) = -0.5");
 }
 
-void test_gauss_legendre()
+void test_lebesgue_spatial() // was test_gauss_legendre
 {
-  std::println("\n=== Gauss-Legendre Quadrature ===");
+  std::println("\n=== Lebesgue Spatial Quadrature (Operator X) ===");
 
   for (int n = 3; n <= 7; ++n)
   {
-    auto q = leb::gauss_legendre(n);
+    auto q = make_lebesgue_rule(n);
     // Total weight should be 2 (length of [-1,1])
     std::string msg_weight = std::format("n={}: total weight = 2", n);
     check_close(q.total_weight(), 2.0, 1e-10, msg_weight.c_str());
@@ -109,7 +141,7 @@ void test_transcendental()
 {
   std::println("\n=== Transcendental Function Integration ===");
 
-  auto q = leb::gauss_legendre(10); // 10-point rule
+  auto q = make_lebesgue_rule(10); // 10-point rule via Lebesgue X-operator
   // ∫ sin(x) dx from -1 to 1 = 0 (odd function)
   double int_sin = q.apply([](double x) { return std::sin(x); });
   check_close(int_sin, 0.0, 1e-10, "∫sin(x) dx = 0");
@@ -127,10 +159,10 @@ void test_transcendental()
 void test_polynomial_exactness()
 {
   std::println("\n=== Polynomial Exactness ===");
-  // n-point Gauss rule should integrate x^k exactly for k = 0..2n-1
+  // n-point rule should integrate x^k exactly for k = 0..2n-1 (Gauss exactness)
   for (int n = 3; n <= 6; ++n)
   {
-    auto q = leb::gauss_legendre(n);
+    auto q = make_lebesgue_rule(n);
 
     for (int k = 0; k < 2 * n; ++k)
     {
@@ -158,7 +190,7 @@ int main()
     test_chebyshev_eval();
     test_chebyshev_sum();
     test_chebyshev_moments();
-    test_gauss_legendre();
+    test_lebesgue_spatial();
     test_transcendental();
     test_polynomial_exactness();
 

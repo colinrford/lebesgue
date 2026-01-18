@@ -1,4 +1,4 @@
-/* 
+/*
  *  lebesgue-basis.cppm – based on Java implementation of Vladislav Malyshkin
  *  see github.com/colinrford/lebesgue for GPL 3.0 license and for more info
  *
@@ -16,9 +16,165 @@ export namespace lam::leb
 
 using lam::vector;
 
+
+template<typename P, typename T>
+concept basis_policy_c = requires(int k, T x, T t_prev, T t_prev2) {
+  // Must provide recurrence: P_k(x) = f(x, P_{k-1}, P_{k-2})
+  { P::evaluate_recurrence(k, x, t_prev, t_prev2) } -> std::convertible_to<T>;
+
+  // Must provide Shift Parameters (a_k, b_k) for Position Operator X
+  // x P_k = b_k P_{k+1} + a_k P_k + b_{k-1} P_{k-1}
+  // Returns pair {a_k, b_k}
+  { P::jacobi_parameters(k) } -> std::convertible_to<std::pair<double, double>>;
+};
+
+struct chebyshev_policy
+{
+  template<typename T>
+  static constexpr T evaluate_recurrence(int, T x, T t_prev, T t_prev2)
+  {
+    return 2.0 * x * t_prev - t_prev2;
+  }
+
+  static constexpr std::pair<double, double> jacobi_parameters(int)
+  {
+    // x T_k = 0.5 T_{k+1} + 0.5 T_{k-1}
+    // a_k = 0 (symmetric), b_k = 0.5 (except k=0? no, handled by special case usually)
+    return {0.0, 0.5};
+  }
+};
+
 // ============================================================================
-// Chebyshev Polynomial Basis
+// NTTP Hierarchical Policy: Uses polynomial_nttp with composition identity
+// T_{mn}(x) = T_m(T_n(x)) for numerical stability at high degrees.
+// Compile-time coefficients, runtime evaluation via Horner.
 // ============================================================================
+
+namespace nttp_detail
+{
+// Compile-time Chebyshev polynomial generation (memoized)
+template<std::size_t N>
+struct chebyshev_coeffs
+{
+  static constexpr auto compute()
+  {
+    std::array<double, N + 1> c{};
+    if constexpr (N == 0)
+    {
+      c[0] = 1.0;
+    }
+    else if constexpr (N == 1)
+    {
+      c[0] = 0.0;
+      c[1] = 1.0;
+    }
+    else
+    {
+      // T_n = 2x * T_{n-1} - T_{n-2}
+      auto c1 = chebyshev_coeffs<N - 1>::value;
+      auto c2 = chebyshev_coeffs<N - 2>::value;
+
+      // Shift c1 by x (multiply by x) and multiply by 2
+      for (std::size_t i = N; i >= 1; --i)
+        c[i] = 2.0 * c1[i - 1];
+      c[0] = 0.0;
+
+      // Subtract c2
+      for (std::size_t i = 0; i <= N - 2; ++i)
+        c[i] -= c2[i];
+    }
+    return c;
+  }
+
+  static constexpr auto value = compute();
+};
+
+// Horner evaluation of compile-time coefficient array using FMA
+// std::fma(a, b, c) = a*b + c with single rounding for better accuracy
+template<std::size_t N>
+constexpr double horner_eval(const std::array<double, N + 1>& c, double x)
+{
+  double result = c[N];
+  for (int i = static_cast<int>(N) - 1; i >= 0; --i)
+    result = std::fma(result, x, c[i]);
+  return result;
+}
+
+// Factorization for hierarchical composition
+// Uses max base of 8 for better numerical stability (lower coefficient magnitude)
+// Recursively factors the inner term for multi-level composition
+template<std::size_t N>
+struct factors
+{
+  static constexpr std::size_t MAX_BASE = 6;
+
+  static constexpr std::size_t find_factor()
+  {
+    if constexpr (N <= MAX_BASE)
+      return 1;
+    // Prefer factors that keep both parts <= MAX_BASE
+    for (std::size_t f = MAX_BASE; f >= 2; --f)
+      if (N % f == 0 && N / f <= MAX_BASE)
+        return f;
+    // Otherwise find any factor <= MAX_BASE
+    for (std::size_t f = MAX_BASE; f >= 2; --f)
+      if (N % f == 0)
+        return f;
+    return 1;
+  }
+
+  static constexpr std::size_t outer = find_factor();
+  static constexpr std::size_t inner = (outer > 1) ? N / outer : N;
+  static constexpr bool is_composite = (outer > 1);
+};
+
+// Multi-level hierarchical evaluation
+// Recursively applies composition: T_{a*b}(x) = T_a(T_b(x))
+// With inner term also factored if needed: T_100 = T_4(T_5(T_5(x)))
+template<std::size_t N>
+double eval_hierarchical(double x)
+{
+  using F = factors<N>;
+  if constexpr (N <= F::MAX_BASE)
+    return horner_eval<N>(chebyshev_coeffs<N>::value, x);
+  else if constexpr (F::is_composite)
+    // Recursive: both outer and inner are factored if needed
+    return eval_hierarchical<F::outer>(eval_hierarchical<F::inner>(x));
+  else
+  {
+    // Fallback to recurrence for primes > MAX_BASE
+    double t0 = 1.0, t1 = x;
+    for (std::size_t k = 2; k <= N; ++k)
+    {
+      double t2 = 2.0 * x * t1 - t0;
+      t0 = t1;
+      t1 = t2;
+    }
+    return t1;
+  }
+}
+} // namespace nttp_detail
+
+struct nttp_hierarchical_policy
+{
+  template<typename T>
+  static constexpr T evaluate_recurrence(int k, T x, T t_prev, T t_prev2)
+  {
+    // Standard Chebyshev recurrence (used by gram matrix construction)
+    return 2.0 * x * t_prev - t_prev2;
+  }
+
+  static constexpr std::pair<double, double> jacobi_parameters(int) { return {0.0, 0.5}; }
+
+  // Additional method: Direct evaluation using hierarchical NTTP
+  // Can be called explicitly for single-point evaluation
+  template<std::size_t N>
+  static double evaluate(double x)
+  {
+    return nttp_detail::eval_hierarchical<N>(x);
+  }
+};
+
 
 /**
  * Evaluate Chebyshev polynomial T_n(x) using three-term recurrence:
@@ -34,8 +190,8 @@ constexpr scalar chebyshev_eval(int n, scalar x) noexcept
   if (n == 1)
     return x;
 
-  scalar T_prev2 = ::leb::detail::constants<scalar>::one; // T_{n-2}
-  scalar T_prev1 = x;                                     // T_{n-1}
+  scalar T_prev2 = ::leb::detail::constants<scalar>::one;
+  scalar T_prev1 = x;
   scalar T_curr = ::leb::detail::constants<scalar>::zero;
 
   scalar two_x = ::leb::detail::constants<scalar>::two * x;
@@ -83,15 +239,14 @@ template<typename scalar>
 inline vector<scalar> chebyshev_moments(std::span<const scalar> x, std::span<const scalar> w, std::size_t n_moments)
 {
   vector<scalar> moments(n_moments);
-  // Initialize to zero handled by vector constructor
 
   for (std::size_t i = 0; i < x.size(); ++i)
   {
     scalar xi = x[i];
     scalar wi = w[i];
 
-    scalar T_prev2 = ::leb::detail::constants<scalar>::one; // T_0
-    scalar T_prev1 = xi;                                    // T_1
+    scalar T_prev2 = ::leb::detail::constants<scalar>::one;
+    scalar T_prev1 = xi;
     scalar two_xi = ::leb::detail::constants<scalar>::two * xi;
 
     if (n_moments > 0)

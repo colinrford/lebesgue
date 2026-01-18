@@ -24,6 +24,7 @@ endif()
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
 
 find_package(lam_linearalgebra REQUIRED)
+find_package(lam_polynomial_nttp REQUIRED)
 
 option(LAM_USE_TBB "Use Intel TBB for parallel execution" ON)
 if(LAM_USE_TBB)
@@ -49,8 +50,10 @@ target_sources(lebesgue_quadrature
         src/lebesgue-basis.cppm
         src/lebesgue-gram.cppm
         src/lebesgue-quadrature.cppm
+        src/lebesgue-tensor.cppm
+        src/lebesgue-parallel.cppm
 )
-target_link_libraries(lebesgue_quadrature PUBLIC lam::linearalgebra)
+target_link_libraries(lebesgue_quadrature PUBLIC lam::linearalgebra lam::polynomial_nttp)
 if(TBB_FOUND)
   target_link_libraries(lebesgue_quadrature PUBLIC TBB::tbb)
   target_compile_definitions(lebesgue_quadrature PUBLIC LEB_HAS_TBB=1)
@@ -84,6 +87,7 @@ install(EXPORT lebesgue_quadratureTargets
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/lam_lebesgueConfig.cmake" [[
 include(CMakeFindDependencyMacro)
 find_dependency(lam_linearalgebra)
+find_dependency(lam_polynomial_nttp)
 include("${CMAKE_CURRENT_LIST_DIR}/lam_lebesgueTargets.cmake")
 ]])
 
@@ -98,3 +102,4 @@ install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/lam_lebesgueConfigVersion.cmake"
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lam_lebesgue
 )
+

@@ -1,4 +1,4 @@
-/* 
+/*
  *  lebesgue-gram.cppm – based on Java implementation of Vladislav Malyshkin
  *  see github.com/colinrford/lebesgue for GPL 3.0 license and for more info
  *
@@ -16,16 +16,16 @@ export module lam.lebesgue:gram;
 import std;
 import lam.linearalgebra;
 import :detail;
+import :parallel;
+import :basis;
 
 export namespace lam::leb
 {
 
 using lam::matrix;
 using lam::vector;
+namespace stdr = std::ranges;
 
-// ============================================================================
-// Gram matrix Construction
-// ============================================================================
 
 /**
  * Build n×n Gram matrix G[j,k] = <T_j, T_k> from moments using standard relation.
@@ -62,14 +62,12 @@ inline matrix<scalar> gram_matrix_from_moments(std::span<const scalar> moments, 
  * G[j,k] = Σᵢ w[i] * T_j(x[i]) * conj(T_k(x[i]))
  * Ensures Hermitian result.
  */
-template<typename scalar>
+template<typename scalar, basis_policy_c<scalar> Policy = chebyshev_policy>
 inline matrix<scalar> gram_matrix_from_samples_sequential(std::span<const scalar> x, std::span<const scalar> w,
                                                           std::size_t n)
 {
   matrix<scalar> G(n, n);
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j)
-      G[i, j] = ::leb::detail::constants<scalar>::zero;
+  stdr::fill(std::span(G.begin(), G.end()), ::leb::detail::constants<scalar>::zero);
 
   for (std::size_t i = 0; i < x.size(); ++i)
   {
@@ -80,7 +78,7 @@ inline matrix<scalar> gram_matrix_from_samples_sequential(std::span<const scalar
 
     scalar two_x = ::leb::detail::constants<scalar>::two * x[i];
     for (std::size_t k = 2; k < n; ++k)
-      T[k] = two_x * T[k - 1] - T[k - 2];
+      T[k] = Policy::evaluate_recurrence(k, x[i], T[k - 1], T[k - 2]);
 
     for (std::size_t j = 0; j < n; ++j)
       for (std::size_t k = 0; k <= j; ++k)
@@ -103,9 +101,7 @@ inline matrix<scalar> weighted_gram_matrix_from_samples(std::span<const scalar> 
                                                         std::span<const scalar> w, std::size_t n)
 {
   matrix<scalar> F(n, n);
-  for (std::size_t i = 0; i < n; ++i)
-    for (std::size_t j = 0; j < n; ++j)
-      F[i, j] = ::leb::detail::constants<scalar>::zero;
+  stdr::fill(std::span(F.begin(), F.end()), ::leb::detail::constants<scalar>::zero);
 
   for (std::size_t i = 0; i < x.size(); ++i)
   {
@@ -137,85 +133,11 @@ inline matrix<scalar> weighted_gram_matrix_from_samples(std::span<const scalar> 
   return F;
 }
 
-// ============================================================================
-// Parallel Gram matrix Construction
-// ============================================================================
-
-namespace parallel
-{
-inline unsigned thread_count() noexcept
-{
-  unsigned n = std::thread::hardware_concurrency();
-  return n > 0 ? n : 4;
-}
-
-class thread_pool
-{
-  std::vector<std::jthread> workers;
-  std::deque<std::function<void()>> tasks;
-  std::mutex queue_mutex;
-  std::condition_variable condition;
-  bool stop = false;
-
-public:
-  explicit thread_pool(std::size_t num_threads)
-  {
-    for (std::size_t i = 0; i < num_threads; ++i)
-    {
-      workers.emplace_back([this](std::stop_token st) {
-        while (true)
-        {
-          std::function<void()> task;
-          {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            condition.wait(lock, [this, &st] { return stop || st.stop_requested() || !tasks.empty(); });
-
-            if ((stop || st.stop_requested()) && tasks.empty())
-              return;
-
-            if (tasks.empty())
-              continue;
-            task = std::move(tasks.front());
-            tasks.pop_front();
-          }
-          task();
-        }
-      });
-    }
-  }
-
-  ~thread_pool()
-  {
-    {
-      std::unique_lock<std::mutex> lock(queue_mutex);
-      stop = true;
-    }
-    condition.notify_all();
-  }
-
-  template<class F>
-  void enqueue(F&& f)
-  {
-    {
-      std::unique_lock<std::mutex> lock(queue_mutex);
-      tasks.emplace_back(std::forward<F>(f));
-    }
-    condition.notify_one();
-  }
-
-  static thread_pool& instance()
-  {
-    static thread_pool pool(thread_count());
-    return pool;
-  }
-};
-
-} // namespace parallel
 
 /**
  * Parallel Gram matrix construction using TBB or jthread pool.
  */
-template<typename scalar>
+template<typename scalar, basis_policy_c<scalar> Policy = chebyshev_policy>
 inline matrix<scalar> gram_matrix_from_samples_parallel(std::span<const scalar> x, std::span<const scalar> w,
                                                         std::size_t n)
 {
@@ -240,7 +162,7 @@ inline matrix<scalar> gram_matrix_from_samples_parallel(std::span<const scalar> 
 
         scalar two_x = ::leb::detail::constants<scalar>::two * x[i];
         for (std::size_t k = 2; k < n; ++k)
-          T[k] = two_x * T[k - 1] - T[k - 2];
+          T[k] = Policy::evaluate_recurrence(k, x[i], T[k - 1], T[k - 2]);
 
         for (std::size_t j = 0; j < n; ++j)
           for (std::size_t k = 0; k <= j; ++k)
@@ -291,7 +213,7 @@ inline matrix<scalar> gram_matrix_from_samples_parallel(std::span<const scalar> 
 
         scalar two_x = ::leb::detail::constants<scalar>::two * x[i];
         for (std::size_t k = 2; k < n; ++k)
-          T[k] = two_x * T[k - 1] - T[k - 2];
+          T[k] = Policy::evaluate_recurrence(k, x[i], T[k - 1], T[k - 2]);
 
         for (std::size_t j = 0; j < n; ++j)
           for (std::size_t k = 0; k <= j; ++k)
@@ -324,13 +246,13 @@ inline matrix<scalar> gram_matrix_from_samples_parallel(std::span<const scalar> 
  * Main entry point: Build Gram matrix directly from samples.
  * Dispatches to Sequential or Parallel based on size.
  */
-template<typename scalar>
+template<typename scalar, basis_policy_c<scalar> Policy = chebyshev_policy>
 inline matrix<scalar> gram_matrix_from_samples(std::span<const scalar> x, std::span<const scalar> w, std::size_t n)
 {
   if (x.size() >= 1000 && n > 5)
-    return gram_matrix_from_samples_parallel(x, w, n);
+    return gram_matrix_from_samples_parallel<scalar, Policy>(x, w, n);
   else
-    return gram_matrix_from_samples_sequential(x, w, n);
+    return gram_matrix_from_samples_sequential<scalar, Policy>(x, w, n);
 }
 
 } // namespace lam::leb
