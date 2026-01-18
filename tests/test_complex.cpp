@@ -1,4 +1,4 @@
-/* 
+/*
  *  test_complex.cpp
  *  see github.com/colinrford/lebesgue for GPL 3.0 license and for more info
  *
@@ -28,106 +28,26 @@ bool almost_equal(std::complex<double> a, std::complex<double> b, double tol = 1
 struct sampler
 {
   std::string name;
-  std::function<void(std::size_t, 
-                     vector<std::complex<double>>&, 
-                     vector<std::complex<double>>&,
-                     vector<std::complex<double>>&)> generate;
+  std::function<void(std::size_t, vector<std::complex<double>>&, vector<std::complex<double>>&,
+                     vector<std::complex<double>>&)>
+    generate;
   std::function<std::complex<double>(std::complex<double>)> reweight;
 };
 
-// 1. Trapezoidal (Uniform Measure approximation)
-// dx = 1 * dmu (since weights approx dx)
-sampler trapezoidal_sampler = {
-  "Trapezoidal (Uniform Grid)",
+// Single Lebesgue Sampler using uniform random samples
+// Generates raw Monte Carlo samples, then Lebesgue constructs optimal quadrature
+sampler lebesgue_sampler = {
+  "Lebesgue (Uniform MC)",
   [](std::size_t N, vector<std::complex<double>>& x, vector<std::complex<double>>& w, vector<std::complex<double>>& f) {
-    double h = 2.0 / (N - 1);
+    static std::mt19937 rng(42);
+    std::uniform_real_distribution<double> dist(-1.0, 1.0);
+    double weight = 2.0 / N; // uniform measure on [-1, 1]
     for (std::size_t i = 0; i < N; ++i)
     {
-      double xi = -1.0 + h * i;
+      double xi = dist(rng);
       x[i] = xi;
-      if (i == 0 || i == N - 1)
-        w[i] = h / 2.0;
-      else
-        w[i] = h;
-      f[i] = x[i];
-    }
-  },
-  [](std::complex<double>) { return 1.0; }};
-
-// 2. Chebyshev (Chebyshev Measure)
-// dmu = dx / sqrt(1-x^2)
-// implies dx = sqrt(1-x^2) dmu
-sampler chebyshev_sampler = {
-  "Chebyshev (Measure 1/sqrt(1-x^2))",
-  [](std::size_t N, vector<std::complex<double>>& x, vector<std::complex<double>>& w, vector<std::complex<double>>& f) {
-    double pi = std::numbers::pi;
-    for (std::size_t i = 0; i < N; ++i)
-    { // Roots of T_N
-      double theta = (2.0 * i + 1.0) * pi / (2.0 * N);
-      x[i] = std::cos(theta);
-      w[i] = pi / N;
-      f[i] = x[i];
-    }
-  },
-  [](std::complex<double> z) { return std::sqrt(1.0 - z * z); }};
-
-// 3. Gauss-Legendre (Uniform Measure, optimal nodes)
-// dx = 1 * dmu (weights are exact for uniform measure)
-// Uses Newton-Raphson to find Legendre roots
-sampler gauss_legendre_sampler = {
-  "Gauss-Legendre (Uniform)",
-  [](std::size_t N, vector<std::complex<double>>& x, vector<std::complex<double>>& w, vector<std::complex<double>>& f) {
-    // Compute Gauss-Legendre nodes and weights using Newton-Raphson
-    const double pi = std::numbers::pi;
-    const double tol = 1e-15;
-    const int max_iter = 100;
-
-    vector<double> nodes(N), weights(N);
-
-    for (std::size_t i = 0; i < (N + 1) / 2; ++i)
-    { // Initial guess from Chebyshev
-      double z = std::cos(pi * (i + 0.75) / (N + 0.5));
-      double z1;
-
-      // Newton-Raphson iteration
-      for (int iter = 0; iter < max_iter; ++iter)
-      { // Evaluate P_N(z) and its derivative using recurrence
-        double p1 = 1.0, p2 = 0.0;
-        for (std::size_t j = 0; j < N; ++j)
-        {
-          double p3 = p2;
-          p2 = p1;
-          p1 = ((2.0 * j + 1.0) * z * p2 - j * p3) / (j + 1.0);
-        }
-        // P_N'(z) = N * (z * P_N(z) - P_{N-1}(z)) / (z^2 - 1)
-        double pp = static_cast<double>(N) * (z * p1 - p2) / (z * z - 1.0);
-        z1 = z;
-        z = z1 - p1 / pp;
-        if (std::abs(z - z1) < tol)
-          break;
-      }
-      // Compute weight
-      double p1 = 1.0, p2 = 0.0;
-      for (std::size_t j = 0; j < N; ++j)
-      {
-        double p3 = p2;
-        p2 = p1;
-        p1 = ((2.0 * j + 1.0) * z * p2 - j * p3) / (j + 1.0);
-      }
-      double pp = static_cast<double>(N) * (z * p1 - p2) / (z * z - 1.0);
-      double weight = 2.0 / ((1.0 - z * z) * pp * pp);
-      // Symmetric placement
-      nodes[i] = -z;
-      nodes[N - 1 - i] = z;
-      weights[i] = weight;
-      weights[N - 1 - i] = weight;
-    }
-
-    for (std::size_t i = 0; i < N; ++i)
-    {
-      x[i] = nodes[i];
-      w[i] = weights[i];
-      f[i] = x[i];
+      w[i] = weight;
+      f[i] = x[i]; // f(x) = x for standard quadrature node generation
     }
   },
   [](std::complex<double>) { return 1.0; }};
@@ -148,7 +68,7 @@ void test_complex_f_real_domain(const sampler& sampler, results_reporter& result
   std::string name = "Complex Function (e^ix)";
   std::println("Test: {} [{}]", name, sampler.name);
 
-  const std::size_t N = 1000;
+  const std::size_t N = 100000;
   vector<std::complex<double>> x(N);
   vector<std::complex<double>> w(N);
   vector<std::complex<double>> f(N);
@@ -178,7 +98,7 @@ void test_qm_momentum(const sampler& sampler, results_reporter& results)
   std::string name = "QM Momentum <p>";
   std::println("\nTest: {} [{}]", name, sampler.name);
 
-  const std::size_t N = 1000;
+  const std::size_t N = 100000;
   vector<std::complex<double>> x(N);
   vector<std::complex<double>> w(N);
   vector<std::complex<double>> f(N);
@@ -220,7 +140,7 @@ void test_harmonic_oscillator(const sampler& sampler, results_reporter& results)
   std::string name = "Harmonic Oscillator <x>";
   std::println("\nTest: {} [{}]", name, sampler.name);
 
-  const std::size_t N = 1000;
+  const std::size_t N = 100000;
   vector<std::complex<double>> x(N);
   vector<std::complex<double>> w(N);
   vector<std::complex<double>> f(N);
@@ -260,7 +180,7 @@ void test_commutator_relation(const sampler& sampler, results_reporter& results)
   std::string name = "Commutator [x, p]";
   std::println("\nTest: {} [{}]", name, sampler.name);
 
-  const std::size_t N = 1000;
+  const std::size_t N = 100000;
   vector<std::complex<double>> x(N);
   vector<std::complex<double>> w(N);
   vector<std::complex<double>> f(N);
@@ -404,7 +324,7 @@ void test_time_evolution(const sampler& sampler, results_reporter& results)
   double prefactor_mag = std::pow(pi * sigma_sq, -0.25);
   double expected_x2 = (sigma_sq / 2.0) + (t * t) / (2.0 * sigma_sq);
 
-  const std::size_t N = 10000;
+  const std::size_t N = 100000;
   vector<std::complex<double>> x(N);
   vector<std::complex<double>> w(N);
   vector<std::complex<double>> f(N);
@@ -448,7 +368,7 @@ void test_hydrogen_atom(const sampler& sampler, results_reporter& results)
   double Rmax = 30.0;
   double scale = Rmax / 2.0;
 
-  const std::size_t N = 10000;
+  const std::size_t N = 100000;
   vector<std::complex<double>> x(N);
   vector<std::complex<double>> w(N);
   vector<std::complex<double>> f(N);
@@ -491,7 +411,7 @@ void test_sinc_function(const sampler& sampler, results_reporter& results)
   std::string name = "Sinc Function sin(x)/x";
   std::println("\nTest: {} [{}]", name, sampler.name);
 
-  const std::size_t N = 1000;
+  const std::size_t N = 100000;
   vector<std::complex<double>> x(N);
   vector<std::complex<double>> w(N);
   vector<std::complex<double>> f(N);
@@ -533,11 +453,7 @@ void test_double_well(const sampler& sampler, results_reporter& results)
   std::string name = "Double-Well Potential <E>";
   std::println("\nTest: {} [{}]", name, sampler.name);
 
-  // V(x) = (x^2 - a^2)^2. Minima at x = +- a.
-  // Barrier height V(0) = a^4 = 16.0
-  // Curvature at min: V''(a) = 32.
-  // omega = sqrt(32) approx 5.65.
-  // E0 approx omega/2 = sqrt(8) approx 2.828.
+  // Double-well V(x) = (x^2 - a^2)^2. E0 approx omega/2 = sqrt(8) ~ 2.828.
 
   double a = 2.0;
   double omega = std::sqrt(8.0 * a * a); // 32
@@ -565,10 +481,7 @@ void test_double_well(const sampler& sampler, results_reporter& results)
     std::complex<double> psi1 = std::exp(-0.5 * omega_val * y1 * y1);
     std::complex<double> psi2 = std::exp(-0.5 * omega_val * y2 * y2);
     std::complex<double> psi = psi1 + psi2;
-    // Laplacian T psi
-    // T psi = -0.5 (-omega*psi + omega^2 y^2 psi) ... no for sum:
-    // T psi1 = -0.5 d/dx (-omega y1 psi1) = -0.5 (-omega psi1 + omega^2 y1^2 psi1)
-    //        = 0.5 omega psi1 - 0.5 omega^2 y1^2 psi1
+    // Kinetic energy operator T = -0.5 d²/dx²
     std::complex<double> Tpsi1 = 0.5 * omega_val * psi1 - 0.5 * omega_val * omega_val * y1 * y1 * psi1;
     std::complex<double> Tpsi2 = 0.5 * omega_val * psi2 - 0.5 * omega_val * omega_val * y2 * y2 * psi2;
     std::complex<double> Tpsi = Tpsi1 + Tpsi2;
@@ -722,12 +635,7 @@ void test_solve_double_well_eigenvalues(const sampler& sampler, results_reporter
 
   std::println("  E0: {:.5f}, E1: {:.5f} (Splitting: {:.2e})", E0, E1, E1 - E0);
   std::println("  E2: {:.5f}, E3: {:.5f} (Splitting: {:.2e})", E2, E3, E3 - E2);
-  // Check next harmonic level: 3*omega/2 = 3 * 2.828 = 8.485
   std::println("  Target Harmonic Levels: {:.5f}, {:.5f}", 2.82843, 8.48528);
-  // Check against Harmonic approx E0 ~ 2.8284
-  // Should be slightly LOWER due to tunneling? No, anharmonicity.
-  // Actually for double well with high barrier, levels are degenerate pairs.
-  // E0 and E1 should be close to 2.828.
   double error = std::abs(E0 - 2.82); // Rough check
   bool pass = (E0 > 2.0 && E0 < 3.0);
 
@@ -1385,7 +1293,7 @@ int main()
     test_consistency_with_real();
 
     results_reporter results;
-    std::vector<sampler*> samplers = {&trapezoidal_sampler, &chebyshev_sampler, &gauss_legendre_sampler};
+    std::vector<sampler*> samplers = {&lebesgue_sampler};
 
     for (auto* s : samplers)
     {

@@ -7,6 +7,8 @@ endfunction()
 leb_add_test(test_lebesgue       test_lebesgue.cpp)
 leb_add_test(test_complex        test_complex.cpp)
 leb_add_test(example_quadrature  example.cpp)
+leb_add_test(tensor_example      tensor_example.cpp)
+leb_add_test(example_multidim    example_multidim.cpp)
 
 add_executable(lebesgue_benchmark benchmark.cpp)
 target_link_libraries(lebesgue_benchmark PRIVATE lam::lebesgue)
@@ -18,6 +20,24 @@ if(lam_polynomial_nttp_FOUND)
   target_link_libraries(benchmark_nttp PRIVATE lam::lebesgue lam::polynomial_nttp)
   target_compile_features(benchmark_nttp PUBLIC cxx_std_23)
   target_compile_options(benchmark_nttp PRIVATE -fconstexpr-steps=100000000)
+
+
+
+  add_executable(benchmark_scaling benchmark_scaling.cpp)
+  target_link_libraries(benchmark_scaling PRIVATE lam::lebesgue)
+  target_compile_features(benchmark_scaling PUBLIC cxx_std_23)
+
+  add_executable(benchmark_accuracy benchmark_accuracy.cpp)
+  target_link_libraries(benchmark_accuracy PRIVATE lam::lebesgue)
+  target_compile_features(benchmark_accuracy PUBLIC cxx_std_23)
+
+  add_executable(benchmark_singular benchmark_singular.cpp)
+  target_link_libraries(benchmark_singular PRIVATE lam::lebesgue)
+  target_compile_features(benchmark_singular PUBLIC cxx_std_23)
+
+  add_executable(benchmark_policy benchmark_policy.cpp)
+  target_link_libraries(benchmark_policy PRIVATE lam::lebesgue)
+  target_compile_features(benchmark_policy PUBLIC cxx_std_23)
 else()
   message(STATUS "lam_polynomial_nttp not found, skipping benchmark_nttp")
 endif()

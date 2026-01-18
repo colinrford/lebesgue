@@ -1,4 +1,4 @@
-/* 
+/*
  *  benchmark.cpp
  *  see github.com/colinrford/lebesgue for GPL 3.0 license and for more info
  *
@@ -12,21 +12,41 @@ import lam.linearalgebra;
 
 using namespace lam::linalg;
 
+// Helper to generate explicit Lebesgue rule (local to benchmarking)
+auto make_lebesgue_rule_explicit = [](std::span<const double> moments, int n) {
+  // 2. Explicit Position Operator Moments (nu_k)
+  // x T_k = 0.5 (T_{k+1} + T_{|k-1|})
+  int n_moments = moments.size();
+  lam::vector<double> x_moments(n_moments);
+  for (int k = 0; k < n_moments; ++k)
+  {
+    double m_plus = (k + 1 < n_moments) ? moments[k + 1] : 0.0;
+    double m_minus = moments[std::abs(k - 1)];
+    x_moments[k] = 0.5 * (m_plus + m_minus);
+  }
+
+  // 3. Solve Spectral Problem
+  return leb::lebesgue_quadrature_from_moments<double>(x_moments.as_span(), moments, n);
+};
+
 int main()
 {
-  // Warmup
+  // Warmup (Explicit)
   for (int i = 0; i < 100; ++i)
   {
-    auto q = leb::gauss_legendre(10);
+    // Mock moments for warmup
+    lam::vector<double> m(20);
+    for (auto& val : m)
+      val = 0.0;
+    m[0] = 2.0;
+    make_lebesgue_rule_explicit(m, 10);
   }
 
   constexpr int iterations = 10000;
   std::array<int, 4> sizes = {5, 10, 20, 50};
 
-  // ========================================================================
-  // Gauss Quadrature (from moments) - special case f(x) = x
-  // ========================================================================
-  std::println("=== Gauss Quadrature (from moments) ===");
+
+  std::println("=== Explicit Lebesgue Quadrature (Manual Operator X) ===");
 
   for (int n : sizes)
   {
@@ -44,7 +64,17 @@ int main()
     auto start = std::chrono::steady_clock::now();
     for (int i = 0; i < iterations; ++i)
     {
-      auto q = leb::gauss_quadrature_from_moments<double>(std::span(moments), n);
+      // BENCHMARKING: Explicit Construction of X-Moments + Spectral Solve
+      int n_moments = moments.size();
+      lam::vector<double> x_moments(n_moments);
+      for (int k = 0; k < n_moments; ++k)
+      {
+        double m_plus = (k + 1 < n_moments) ? moments[k + 1] : 0.0;
+        double m_minus = moments[std::abs(k - 1)];
+        x_moments[k] = 0.5 * (m_plus + m_minus);
+      }
+
+      auto q = leb::lebesgue_quadrature_from_moments<double>(x_moments.as_span(), std::span(moments), n);
     }
     auto end = std::chrono::steady_clock::now();
 
@@ -52,9 +82,7 @@ int main()
     std::println("n={:2d}: {:8.2f} us/call", n, us_per_call);
   }
 
-  // ========================================================================
-  // Lebesgue Quadrature (from samples) - general case
-  // ========================================================================
+
   std::println("\n=== Lebesgue Quadrature (from samples) ===");
 
   std::mt19937 rng(42);
@@ -105,9 +133,7 @@ int main()
     }
   }
 
-  // ========================================================================
-  // Lebesgue Quadrature (from moments) - matches Java approach
-  // ========================================================================
+
   std::println("=== Lebesgue Quadrature (from moments, like Java) ===");
 
   for (int n_samples : sample_sizes)
@@ -157,9 +183,7 @@ int main()
     }
   }
 
-  // ========================================================================
-  // Parallel Implementation Comparison
-  // ========================================================================
+
   std::println("\n=== Parallel Implementation Comparison ===");
   std::println("Using {} hardware threads\n", std::thread::hardware_concurrency());
 

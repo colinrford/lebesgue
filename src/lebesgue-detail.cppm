@@ -1,4 +1,4 @@
-/* 
+/*
  *  lebesgue-detail.cppm – based on Java implementation of Vladislav Malyshkin
  *  see github.com/colinrford/lebesgue for GPL 3.0 license and for more info
  *

@@ -1,4 +1,4 @@
-/* 
+/*
  *  lebesgue-quadrature.cppm – based on Java implementation of Vladislav Malyshkin
  *  see github.com/colinrford/lebesgue for GPL 3.0 license and for more info
  *
@@ -18,10 +18,8 @@ export namespace lam::leb
 
 using lam::matrix;
 using lam::vector;
+namespace stdr = std::ranges;
 
-// ============================================================================
-// quadrature Data Structures
-// ============================================================================
 
 /**
  * Basic quadrature rule: nodes and weights.
@@ -40,8 +38,8 @@ struct quadrature
   scalar apply(F&& f) const
   {
     scalar sum = ::leb::detail::constants<scalar>::zero;
-    for (std::size_t k = 0; k < nodes.size(); ++k)
-      sum += weights[k] * std::forward<F>(f)(nodes[k]);
+    for (auto [node, weight] : std::views::zip(nodes, weights))
+      sum += weight * std::forward<F>(f)(node);
     return sum;
   }
 
@@ -50,10 +48,7 @@ struct quadrature
    */
   [[nodiscard]] scalar total_weight() const
   {
-    scalar sum = ::leb::detail::constants<scalar>::zero;
-    for (auto w : weights)
-      sum += w;
-    return sum;
+    return std::accumulate(stdr::begin(weights), stdr::end(weights), ::leb::detail::constants<scalar>::zero);
   }
 };
 
@@ -63,9 +58,9 @@ struct quadrature
 template<typename scalar>
 struct radon_nikodym_eval
 {
-  scalar radon_nikodym;   // RN(x₀)
-  scalar least_squares;   // LS(x₀)
-  scalar christoffel_inv; // 1/K(x₀)
+  scalar radon_nikodym;
+  scalar least_squares;
+  scalar christoffel_inv;
 };
 
 /**
@@ -130,9 +125,6 @@ struct lebesgue_quadrature_data
   [[nodiscard]] quadrature<scalar> to_quadrature() const { return {nodes, weights}; }
 };
 
-// ============================================================================
-// quadrature Construction Functions
-// ============================================================================
 
 /**
  * Build Lebesgue quadrature from samples.
@@ -167,13 +159,11 @@ inline lebesgue_quadrature_data<scalar> lebesgue_quadrature_from_samples(std::sp
   {
     result.nodes[k] = gep.eigenvalues[k];
     // ψ_average = <1, ψ_k> = <T_0, ψ_k>
-    // = sum_j v_{jk} G[0, j]
+    // sum_j v_{jk} G[0, j]
     scalar psi_avg = ::leb::detail::constants<scalar>::zero;
     for (std::size_t i = 0; i < n; ++i)
       psi_avg += G[0, i] * gep.eigenvectors[i, k];
     result.psi_averages[k] = psi_avg;
-    // Weight w_k = |<1, ψ_k>|^2 = |psi_avg|^2
-    // For real: psi_avg^2. For complex: psi_avg * conj(psi_avg)
     result.weights[k] = psi_avg * ::leb::detail::conj(psi_avg);
   }
 
