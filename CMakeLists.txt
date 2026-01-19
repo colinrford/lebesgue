@@ -35,10 +35,29 @@ if(LAM_USE_TBB)
   find_package(TBB QUIET)
   if(TBB_FOUND)
     message(STATUS "Found TBB: enabling parallel execution backend")
-  else()
-    message(STATUS "TBB not found: parallel std::execution will fall back to sequential")
   endif()
 endif()
+
+# Map boolean options to strings for config generation
+macro(map_bool_to_string VAR RESULT)
+  if(${VAR})
+    set(${RESULT} "true")
+  else()
+    set(${RESULT} "false")
+  endif()
+endmacro()
+
+map_bool_to_string(TBB_FOUND LAM_USE_TBB_BOOL)
+if(CMAKE_BUILD_TYPE AND CMAKE_BUILD_TYPE MATCHES "^[Dd][Ee][Bb][Uu][Gg]$")
+  set(IS_DEBUG "true")
+else()
+  set(IS_DEBUG "false")
+endif()
+
+configure_file(
+  lebesgue_config.cppm.in
+  ${CMAKE_CURRENT_BINARY_DIR}/lebesgue_config.cppm
+)
 
 add_library(lebesgue_quadrature)
 add_library(lam::lebesgue ALIAS lebesgue_quadrature)
@@ -47,7 +66,7 @@ target_sources(lebesgue_quadrature
   PUBLIC
     FILE_SET CXX_MODULES
       TYPE CXX_MODULES
-      BASE_DIRS ${PROJECT_SOURCE_DIR}/src
+      BASE_DIRS ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}
       FILES
         src/lebesgue.cppm
         src/lebesgue-detail.cppm
@@ -56,6 +75,7 @@ target_sources(lebesgue_quadrature
         src/lebesgue-quadrature.cppm
         src/lebesgue-tensor.cppm
         src/lebesgue-parallel.cppm
+        ${CMAKE_CURRENT_BINARY_DIR}/lebesgue_config.cppm
 )
 target_link_libraries(lebesgue_quadrature PUBLIC lam::linearalgebra lam::polynomial_nttp)
 if(TBB_FOUND)
