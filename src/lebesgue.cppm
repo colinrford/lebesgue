@@ -12,6 +12,7 @@ export import :basis;
 export import :gram;
 export import :quadrature;
 export import :tensor;
+export import :config;
 
 import std;
 
