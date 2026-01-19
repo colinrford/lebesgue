@@ -12,6 +12,7 @@ import lam.linearalgebra;
 import :detail;
 import :quadrature;
 import :parallel;
+import :config;
 
 export namespace lam::leb
 {
@@ -125,7 +126,6 @@ tensor_product_quadrature<scalar> make_tensor_product(std::span<const quadrature
   result.nodes = vector<scalar>(total_points * dim);
   result.weights = vector<scalar>(total_points);
 
-  // Populate
   for (std::size_t i = 0; i < total_points; ++i)
   {
     scalar combined_weight = ::leb::detail::constants<scalar>::one;
@@ -135,10 +135,8 @@ tensor_product_quadrature<scalar> make_tensor_product(std::span<const quadrature
       std::size_t size_d = rules[d].nodes.size();
       std::size_t idx_d = (i / strides[d]) % size_d;
 
-      // Store node coord
       result.nodes[i * dim + d] = rules[d].nodes[idx_d];
 
-      // Accumulate weight
       combined_weight *= rules[d].weights[idx_d];
     }
     result.weights[i] = combined_weight;
