@@ -1,19 +1,9 @@
 cmake_minimum_required(VERSION 3.31.6)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
 
-# Enable experimental import std support
-if(CMAKE_VERSION VERSION_GREATER_EQUAL 4.0.3)
-  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
-elseif(CMAKE_VERSION VERSION_GREATER_EQUAL 4.0.0)
-  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "a9e1cf81-9932-4810-974b-6eccaf14e457")
-elseif(CMAKE_VERSION VERSION_GREATER_EQUAL 3.31.6)
-  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "0e5b6991-d74f-4b3d-a41c-cf096e0b2508")
-endif()
-
-set(CMAKE_CXX_STANDARD 23)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_MODULE_STD ON)
-set(CMAKE_CXX_SCAN_FOR_MODULES ON)
+include(LamCxxModuleStd)
+include(LamBuildMeta)
+include(Sanitizers)
 
 project(lebesgue_quadrature VERSION 0.1.260210 LANGUAGES CXX)
 
@@ -42,21 +32,7 @@ if(LAM_USE_TBB)
   endif()
 endif()
 
-# Map boolean options to strings for config generation
-macro(map_bool_to_string VAR RESULT)
-  if(${VAR})
-    set(${RESULT} "true")
-  else()
-    set(${RESULT} "false")
-  endif()
-endmacro()
-
 map_bool_to_string(TBB_FOUND LAM_USE_TBB_BOOL)
-if(CMAKE_BUILD_TYPE AND CMAKE_BUILD_TYPE MATCHES "^[Dd][Ee][Bb][Uu][Gg]$")
-  set(IS_DEBUG "true")
-else()
-  set(IS_DEBUG "false")
-endif()
 
 configure_file(
   lebesgue_config.cppm.in
