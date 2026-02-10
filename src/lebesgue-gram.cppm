@@ -187,7 +187,7 @@ inline matrix<scalar> gram_matrix_from_samples_parallel(std::span<const scalar> 
   const std::size_t samples = x.size();
   const std::size_t chunk_size = (samples + n_threads - 1) / n_threads;
 
-  lam::vector<matrix<scalar>> partials;
+  std::vector<matrix<scalar>> partials;
   for (unsigned t = 0; t < n_threads; ++t)
   {
     partials.emplace_back(n, n);

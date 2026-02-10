@@ -15,13 +15,17 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
-project(lebesgue_quadrature VERSION 0.1.260118 LANGUAGES CXX)
+project(lebesgue_quadrature VERSION 0.1.260210 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
+if(NOT EMSCRIPTEN)
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
+else()
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
+endif()
 
 if(NOT TARGET lam::linearalgebra)
   find_package(lam_linearalgebra REQUIRED)
