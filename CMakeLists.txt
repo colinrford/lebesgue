@@ -5,7 +5,7 @@ include(LamCxxModuleStd)
 include(LamBuildMeta)
 include(Sanitizers)
 
-project(lebesgue_quadrature VERSION 0.1.260210 LANGUAGES CXX)
+project(lebesgue_quadrature VERSION 0.1.260306 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
