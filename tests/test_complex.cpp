@@ -7,8 +7,9 @@
 
 import std;
 import lam.lebesgue;
-namespace leb = lam::leb;
 import lam.linearalgebra;
+
+namespace leb = lam::leb;
 
 using namespace std::complex_literals;
 
@@ -16,9 +17,7 @@ template<typename T>
 struct std::formatter<std::complex<T>> : std::formatter<T>
 {
   auto format(std::complex<T> c, format_context& ctx) const
-  {
-    return std::format_to(ctx.out(), "({0}, {1})", c.real(), c.imag());
-  }
+  { return std::format_to(ctx.out(), "({0}, {1})", c.real(), c.imag()); }
 };
 
 using namespace lam::linalg;

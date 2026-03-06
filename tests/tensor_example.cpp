@@ -3,10 +3,11 @@
  *  see github.com/colinrford/lebesgue for GPL 3.0 license and for more info
  */
 
-import lam.lebesgue;
-namespace leb = lam::leb;
 import std;
+import lam.lebesgue;
 import lam.linearalgebra; // for vector
+
+namespace leb = lam::leb;
 
 int main()
 {

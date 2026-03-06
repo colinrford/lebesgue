@@ -14,16 +14,16 @@ add_executable(lebesgue_benchmark benchmark.cpp)
 target_link_libraries(lebesgue_benchmark PRIVATE lam::lebesgue)
 add_test(NAME lebesgue_benchmark COMMAND lebesgue_benchmark)
 
-find_package(lam_polynomial_nttp QUIET)
-if(lam_polynomial_nttp_FOUND)
-  message(STATUS "Found lam_polynomial_nttp: building benchmark_nttp")
+if(NOT TARGET lam::polynomial_nttp)
+  find_package(lam_polynomial_nttp QUIET)
+endif()
+if(TARGET lam::polynomial_nttp)
+  message(STATUS "lam::polynomial_nttp available: building benchmark_nttp")
   add_executable(benchmark_nttp benchmark_nttp.cpp)
   target_link_libraries(benchmark_nttp PRIVATE lam::lebesgue lam::polynomial_nttp)
   target_compile_features(benchmark_nttp PUBLIC cxx_std_23)
   target_compile_options(benchmark_nttp PRIVATE -fconstexpr-steps=100000000)
   add_test(NAME benchmark_nttp COMMAND benchmark_nttp)
-
-
 
   add_executable(benchmark_scaling benchmark_scaling.cpp)
   target_link_libraries(benchmark_scaling PRIVATE lam::lebesgue)

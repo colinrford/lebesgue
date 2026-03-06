@@ -5,10 +5,12 @@
  *  Compares chebyshev_policy (runtime recurrence) vs nttp_hierarchical_policy
  *  (compile-time coefficients with hierarchical composition).
  */
+
 import std;
 import lam.lebesgue;
-namespace leb = lam::leb;
 import lam.linearalgebra;
+
+namespace leb = lam::leb;
 
 int main()
 {
