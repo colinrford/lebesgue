@@ -5,10 +5,11 @@
  *  test suite for Lebesgue Quadrature library.
  */
 
-import lam.lebesgue;
-namespace leb = lam::leb;
 import std;
+import lam.lebesgue;
 import lam.linearalgebra;
+
+namespace leb = lam::leb;
 
 void check(bool condition, const char* message)
 {

@@ -4,12 +4,13 @@
  *
  *  benchmark comparing runtime Chebyshev evaluation vs compile-time generated polynomial_nttp.
  */
+
 import std;
 import lam.lebesgue;
-namespace leb = lam::leb; // for leb::chebyshev_eval
-
 import lam.linearalgebra;
 import lam.polynomial_nttp;
+
+namespace leb = lam::leb; // for leb::chebyshev_eval
 
 using namespace lam::polynomial;
 
@@ -47,9 +48,7 @@ struct chebyshev_t_memo
 
 template<typename R, std::size_t N>
 constexpr auto chebyshev_t_n()
-{
-  return chebyshev_t_memo<R, N>::value;
-}
+{ return chebyshev_t_memo<R, N>::value; }
 
 // Helper to evaluate at runtime for a dynamic N using a switch of compiled polynomials
 template<typename R, std::size_t MaxN>

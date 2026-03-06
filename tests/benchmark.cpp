@@ -5,10 +5,11 @@
  *  benchmark Gauss and Lebesgue quadrature construction.
  */
 
-import lam.lebesgue;
-namespace leb = lam::leb;
 import std;
+import lam.lebesgue;
 import lam.linearalgebra;
+
+namespace leb = lam::leb;
 
 using namespace lam::linalg;
 

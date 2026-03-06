@@ -5,10 +5,11 @@
  *  example usage of the Lebesgue Quadrature library.
  */
 
-import lam.lebesgue;
-namespace leb = lam::leb;
 import std;
+import lam.lebesgue;
 import lam.linearalgebra; // for vector
+
+namespace leb = lam::leb;
 
 int main()
 {
