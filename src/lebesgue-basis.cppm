@@ -32,9 +32,7 @@ struct chebyshev_policy
 {
   template<typename T>
   static constexpr T evaluate_recurrence(int, T x, T t_prev, T t_prev2)
-  {
-    return 2.0 * x * t_prev - t_prev2;
-  }
+  { return 2.0 * x * t_prev - t_prev2; }
 
   static constexpr std::pair<double, double> jacobi_parameters(int)
   {
@@ -170,9 +168,7 @@ struct nttp_hierarchical_policy
   // Can be called explicitly for single-point evaluation
   template<std::size_t N>
   static double evaluate(double x)
-  {
-    return nttp_detail::eval_hierarchical<N>(x);
-  }
+  { return nttp_detail::eval_hierarchical<N>(x); }
 };
 
 

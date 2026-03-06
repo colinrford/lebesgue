@@ -47,9 +47,7 @@ struct quadrature
    * Sum of all weights (should equal integral of 1 over the measure).
    */
   [[nodiscard]] scalar total_weight() const
-  {
-    return std::accumulate(stdr::begin(weights), stdr::end(weights), ::leb::detail::constants<scalar>::zero);
-  }
+  { return std::accumulate(stdr::begin(weights), stdr::end(weights), ::leb::detail::constants<scalar>::zero); }
 };
 
 /**
@@ -141,11 +139,16 @@ inline lebesgue_quadrature_data<scalar> lebesgue_quadrature_from_samples(std::sp
                                                                          std::span<const scalar> w, std::size_t n)
 {
   // 1. Build Gram matrix G = <T_j, T_k>
+  std::cerr << "DEBUG: lebesgue_quadrature_from_samples called with n=" << n << std::endl;
   auto G = gram_matrix_from_samples<scalar>(x, w, n);
   // 2. Build weighted Gram matrix F = <f·T_j, T_k>
   auto F = weighted_gram_matrix_from_samples<scalar>(x, f, w, n);
   // 3. Solve GEP: F*v = λ*G*v
   auto gep = lam::linalg::solve_gep(F, G);
+  if (!gep.success)
+  {
+    throw std::runtime_error("lebesgue_quadrature: solve_gep failed. Measure likely singular or n too high.");
+  }
   // 4. Extract results
   lebesgue_quadrature_data<scalar> result;
   result.gram_matrix = G;
@@ -188,6 +191,10 @@ inline lebesgue_quadrature_data<scalar> lebesgue_quadrature_from_moments(std::sp
   auto F = gram_matrix_from_moments<scalar>(f_moments, n);
   // 3. Solve GEP
   auto gep = lam::linalg::solve_gep(F, G);
+  if (!gep.success)
+  {
+    throw std::runtime_error("lebesgue_quadrature: solve_gep failed for moments.");
+  }
   // 4. Extract results
   lebesgue_quadrature_data<scalar> result;
   result.gram_matrix = G;
@@ -228,6 +235,10 @@ inline lebesgue_quadrature_data<scalar> gauss_quadrature_from_moments(std::span<
   auto F = gram_matrix_from_moments<scalar>(std::span(x_mom), n);
   // 4. Solve GEP
   auto gep = lam::linalg::solve_gep(F, G);
+  if (!gep.success)
+  {
+    throw std::runtime_error("lebesgue_quadrature: solve_gep failed for Gauss-Chebyshev moments.");
+  }
   // 5. Extract results
   lebesgue_quadrature_data<scalar> result;
   result.gram_matrix = G;

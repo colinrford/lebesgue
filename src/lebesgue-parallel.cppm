@@ -26,7 +26,8 @@ constexpr bool tbb_compiled = true;
 #else
 constexpr bool tbb_compiled = false;
 #endif
-static_assert(lam::lebesgue::config::use_tbb == tbb_compiled, "lam::lebesgue::config::use_tbb mismatch with LEB_HAS_TBB");
+static_assert(lam::lebesgue::config::use_tbb == tbb_compiled,
+              "lam::lebesgue::config::use_tbb mismatch with LEB_HAS_TBB");
 
 inline unsigned thread_count() noexcept
 {
