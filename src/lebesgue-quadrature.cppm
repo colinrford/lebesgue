@@ -139,7 +139,6 @@ inline lebesgue_quadrature_data<scalar> lebesgue_quadrature_from_samples(std::sp
                                                                          std::span<const scalar> w, std::size_t n)
 {
   // 1. Build Gram matrix G = <T_j, T_k>
-  std::cerr << "DEBUG: lebesgue_quadrature_from_samples called with n=" << n << std::endl;
   auto G = gram_matrix_from_samples<scalar>(x, w, n);
   // 2. Build weighted Gram matrix F = <f·T_j, T_k>
   auto F = weighted_gram_matrix_from_samples<scalar>(x, f, w, n);

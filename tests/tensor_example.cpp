@@ -3,6 +3,8 @@
  *  see github.com/colinrford/lebesgue for GPL 3.0 license and for more info
  */
 
+#include <new>
+
 import std;
 import lam.lebesgue;
 import lam.linearalgebra; // for vector

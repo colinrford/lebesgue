@@ -41,12 +41,13 @@ struct tensor_product_quadrature
    * Apply quadrature to integrate function f: R^d -> R.
    * f must be callable with std::span<const scalar> (representing a point in d-dims).
    *
-   * Automatically uses parallel execution if n_points > 1000.
+   * Automatically uses parallel execution when n_points exceeds the
+   * configured parallel_threshold (see lam::lebesgue::config).
    */
   template<typename F>
   scalar apply(F&& f) const
   {
-    if (n_points < 1000)
+    if (n_points < lam::lebesgue::config::parallel_threshold)
     {
       scalar sum = ::leb::detail::constants<scalar>::zero;
       auto nodes_span = nodes.as_span();

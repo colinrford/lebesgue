@@ -23,4 +23,9 @@ export namespace lam::lebesgue::config
 
   // TBB Configuration (Lebesgue specific)
   inline constexpr bool use_tbb = @LAM_USE_TBB_BOOL@;
+
+  // Minimum number of work items before spawning threads.
+  // Below this threshold, work is done sequentially to avoid thread overhead.
+  // Platform-dependent: larger values suit systems with high thread-spawn cost.
+  inline constexpr std::size_t parallel_threshold = 1000;
 }

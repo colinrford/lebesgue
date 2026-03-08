@@ -78,6 +78,7 @@ public:
       stop = true;
     }
     condition.notify_all();
+    workers.clear(); // join all threads before members are destroyed
   }
 
   template<class F>
@@ -131,7 +132,7 @@ T transform_reduce(std::size_t n, T init, TransformOp&& transform_op, ReduceOp&&
     auto& pool = thread_pool::instance();
     unsigned n_threads = thread_count();
 
-    if (n < 1000)
+    if (n < lam::lebesgue::config::parallel_threshold)
       n_threads = 1; // Sequential for small N
 
     if (n_threads == 1)

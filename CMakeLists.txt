@@ -5,13 +5,13 @@ include(LamCxxModuleStd)
 include(LamBuildMeta)
 include(Sanitizers)
 
-project(lebesgue_quadrature VERSION 0.1.260306 LANGUAGES CXX)
+project(lebesgue_quadrature VERSION 0.1.260308 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-if(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN AND NOT CMAKE_CROSSCOMPILING)
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -march=native")
 else()
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
