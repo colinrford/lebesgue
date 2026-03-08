@@ -5,6 +5,8 @@
  *  comprehensive test suite for complex-valued quadrature and quantum mechanics problems.
  */
 
+#include <new>
+
 import std;
 import lam.lebesgue;
 import lam.linearalgebra;
